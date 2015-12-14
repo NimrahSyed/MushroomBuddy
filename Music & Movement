@@ -1,0 +1,108 @@
+// ---------- included libraries ------------ 
+#include <Servo.h>
+#include <NewPing.h>
+#include <TimerFreeTone.h>
+
+// ---------- hardware pin defines  ----------- 
+int triggerPin = 11;      // select the pin for ultrasonic trigger
+int echoPin = 12;         // select the pin for echo
+const int ledPin = 13;    // LED pin
+
+
+// ---------- variable initialization  ----------- 
+int delayTime = 200;        //variable that holds the delay time in milliseconds
+int scaling = 1;
+unsigned int uS = 0;        // holds the time it took for the pulse to be recived
+unsigned int distance = 10; // holds the distance in centimeters
+int maxValue = 200;         // in centimeter
+int minValue = 0;           // in centimeter
+int maxDistance = 200;      // in centimeters
+int sensorValue;            // variable to hold sensor value
+int sensorLow = 1023;       // variable to calibrate low value
+int sensorHigh = 0;         // variable to calibrate high value
+int last_action = 0;        // variable for last action
+bool curr_state = false;
+bool last_state = false;
+long last_servo = 0;
+long last_there = 0;
+long last_home = 0;
+int degree = 0;
+
+// ---------- library initialization  -----------  
+Servo petHome;   // create servo object to control a servo a maximum of eight servo objects can be created
+NewPing sonar(triggerPin, echoPin, maxDistance);
+
+
+void setup() {
+  Serial.begin(9600);
+ 
+  // declare hardware connections
+   petHome.attach(9);  // attaches the servo on pin 9 to the servo object
+ 
+  // Make the LED pin an output and turn it on
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
+
+    // calibrate for the first five seconds after program runs
+  while (millis() < 5000)
+  {
+      // record the maximum sensor value
+    sensorValue = analogRead(A0);
+    if (sensorValue > sensorHigh)
+    {
+      sensorHigh = sensorValue;
+    }
+   
+    // record the minimum sensor value
+    if (sensorValue < sensorLow)
+    {
+      sensorLow = sensorValue;
+    }
+  }
+ 
+  // turn the LED off, signaling the end of the calibration period
+  digitalWrite(ledPin, LOW);
+
+
+}
+
+void loop() {
+
+   // ---------------------------------------------------------
+   // Servos
+   // ---------------------------------------------------------
+   if(millis() - last_servo >= 200){
+       uS = sonar.ping();
+       distance = uS / US_ROUNDTRIP_CM;
+       Serial.print("Distance (cm): "); Serial.println(distance);
+       if(millis() - last_home >= 5000){
+    if (1 < distance && distance < 30){petHome.write(0);}
+       last_home = millis();
+       }
+
+    if (1 < distance && distance > 30){
+    if ( degree == 0 ){ degree = 30; }
+   else if ( degree == 30 ){ degree = 0; }
+        petHome.write(degree);
+   }     
+
+   }                                          
+
+ 
+   // ---------------------------------------------------------
+   // Music
+   // ---------------------------------------------------------
+
+if(millis() - last_there >= 10){
+       sensorValue = analogRead(A0);
+       Serial.println("sensorValue: "); Serial.println(sensorValue);
+       sensorValue = constrain(sensorValue,sensorLow,sensorHigh);
+       sensorValue = map(sensorValue,sensorLow,sensorHigh,50,4000);
+      if (sensorValue > 500)
+ {      TimerFreeTone(8,sensorValue,20);
+       last_there = millis();
+}
+       }
+
+
+}
